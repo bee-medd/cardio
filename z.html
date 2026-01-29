@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardio Tirage Collectif</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: #f4f4f4; padding: 10px; text-align: center; }
+        .box { background: white; max-width: 400px; margin: auto; padding: 20px; border: 2px solid #000; box-shadow: 10px 10px 0 #ccc; }
+        input { width: 70%; padding: 10px; border: 1px solid #000; outline: none; }
+        button { padding: 10px; background: #000; color: #fff; cursor: pointer; border: none; font-weight: bold; }
+        #list { text-align: left; margin: 20px 0; background: #fffde7; padding: 10px; border: 1px dashed #000; min-height: 50px; }
+        .item { border-bottom: 1px solid #eee; padding: 5px; font-size: 14px; }
+        #status { font-size: 10px; color: #666; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; display: none; }
+        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+    </style>
+</head>
+<body>
+
+<div class="box">
+    <h3>REGISTRE CARDIO 2025</h3>
+    <div id="status">Chargement de la liste commune...</div>
+    
+    <div id="inputZone">
+        <input type="text" id="nameIn" placeholder="VOTRE NOM...">
+        <button onclick="pushName()">OK</button>
+    </div>
+
+    <div id="list"></div>
+
+    <button id="drawBtn" style="display:none; width:100%;" onclick="runOfficialDraw()">LANCER LE TIRAGE GÉNÉRAL</button>
+
+    <table id="resultTable">
+        <thead><tr><th>Période</th><th>Médecins</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    // URL de stockage public (Unique pour votre groupe)
+    // Changez "mon_groupe_cardio_2025" par un mot secret à vous pour plus de sécurité
+    const groupKey = "cardio_votre_secret_unique_99"; 
+    const api = `https://api.keyvalue.xyz/${groupKey}/internes`;
+
+    let interns = [];
+
+    // 1. Charger la liste depuis internet automatiquement
+    async function fetchList() {
+        try {
+            const res = await fetch(api);
+            if (res.ok) {
+                const text = await res.text();
+                interns = text ? text.split(',') : [];
+                updateUI();
+            }
+        } catch (e) { console.log("Init..."); }
+    }
+
+    // 2. Envoyer mon nom au groupe
+    async function pushName() {
+        const name = document.getElementById('nameIn').value.trim().toUpperCase();
+        if (!name) return;
+        if (interns.includes(name)) return alert("Déjà inscrit !");
+
+        interns.push(name);
+        await fetch(api, { method: 'POST', body: interns.join(',') });
+        document.getElementById('nameIn').value = "";
+        updateUI();
+    }
+
+    function updateUI() {
+        const listDiv = document.getElementById('list');
+        listDiv.innerHTML = interns.map((n, i) => `<div class="item">${i+1}. ${n}</div>`).join('');
+        document.getElementById('status').innerText = `${interns.length} / 13 inscrits`;
+        
+        if(interns.length >= 13) {
+            document.getElementById('drawBtn').style.display = 'block';
+            document.getElementById('inputZone').style.display = 'none';
+        }
+    }
+
+    // 3. Tirage (même logique de confiance)
+    async function runOfficialDraw() {
+        const pool = [...interns].sort(() => Math.random() - 0.5);
+        const periods = ["01/02-10/02", "11/02-20/02", "21/02-02/03 (Ramadan)", "03/03-12/03", "13/03-22/03 (Aid)", "23/03-01/04", "02/04-11/04"];
+        
+        const tbody = document.getElementById('tableBody');
+        tbody.innerHTML = "";
+        document.getElementById('resultTable').style.display = "table";
+        document.getElementById('drawBtn').style.display = "none";
+
+        periods.forEach(p => {
+            const d1 = pool.pop() || "---";
+            const d2 = pool.pop() || "---";
+            tbody.innerHTML += `<tr><td>${p}</td><td>DR. ${d1}<br>DR. ${d2}</td></tr>`;
+        });
+    }
+
+    // Rafraîchir la liste toutes les 3 secondes
+    setInterval(fetchList, 3000);
+    fetchList();
+</script>
+
+</body>
+</html>
